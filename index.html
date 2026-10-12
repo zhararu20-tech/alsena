@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alsena — бассейн, тренажёрный зал, SPA</title>
+<meta name="description" content="Alsena — центр плавания, фитнеса и восстановления: бассейн, тренажёрный зал, фитнес-кружки, сауны, массаж.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* =========================================================
+   ALSENA — landing
+   ========================================================= */
+:root {
+  --ink: #04121c;
+  --ink-2: #0a2232;
+  --paper: #eef6f5;
+  --muted: rgba(238, 246, 245, .62);
+  --line: rgba(238, 246, 245, .14);
+
+  --aqua: #5ef0d6;
+  --aqua-deep: #0b6b78;
+  --ember: #ff7a3d;
+  --sand: #f2c98a;
+  --rose: #ff6b8b;
+
+  --accent: var(--aqua);
+
+  --f-display: "Unbounded", system-ui, sans-serif;
+  --f-body: "Manrope", system-ui, sans-serif;
+
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --gutter: clamp(16px, 4vw, 64px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+img { display: block; max-width: 100%; }
+em { font-style: normal; color: var(--accent); }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  position: fixed; inset: 0 0 auto 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px var(--gutter);
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.logo { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 700; letter-spacing: .28em; font-size: 15px; }
+.logo svg { width: 34px; height: 34px; fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; transition: stroke .6s; }
+.topnav { display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(4, 18, 28, .55); backdrop-filter: blur(14px); border: 1px solid var(--line); }
+.topnav a { padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--muted); transition: color .3s, background .3s; }
+.topnav a:hover { color: var(--paper); }
+.topnav a.is-current { color: var(--paper); background: rgba(238, 246, 245, .1); }
+.topnav .topnav-cta { background: var(--accent); color: var(--ink); transition: background .6s; }
+.topnav .topnav-cta:hover, .topnav .topnav-cta.is-current { color: var(--ink); background: var(--paper); }
+
+/* ---------- Side dots + counter ---------- */
+.dots { position: fixed; right: calc(var(--gutter) - 4px); top: 50%; transform: translateY(-50%); z-index: 50; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.dots button { position: relative; display: block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); transition: all .4s var(--ease); }
+.dots button span { position: absolute; right: 24px; top: 50%; transform: translate(8px, -50%); white-space: nowrap; font-size: 12px; font-weight: 600; letter-spacing: .06em; opacity: 0; pointer-events: none; transition: all .3s; }
+.dots button:hover span { opacity: 1; transform: translate(0, -50%); }
+.dots button.is-current { background: var(--accent); border-color: var(--accent); transform: scale(1.35); }
+.counter { position: fixed; left: var(--gutter); bottom: 28px; z-index: 50; display: flex; align-items: center; gap: 12px; font-family: var(--f-display); font-size: 13px; color: var(--muted); }
+.counter b { color: var(--paper); font-weight: 700; font-size: 18px; }
+.counter i { width: 48px; height: 1px; background: var(--line); }
+
+/* ---------- Stage / scenes (fullpage mode) ---------- */
+.stage { position: relative; }
+html.fp, html.fp body { overflow: hidden; }
+html.fp .scene {
+  position: fixed; inset: 0;
+  opacity: 0; visibility: hidden;
+  transition: opacity .55s ease, visibility 0s linear .55s;
+}
+html.fp .scene.is-active {
+  opacity: 1; visibility: visible; z-index: 2;
+  transition: opacity .7s ease .35s, visibility 0s;
+}
+
+/* flow mode (phones / small screens) */
+html:not(.fp) .scene { position: relative; min-height: 100svh; }
+html:not(.fp) .dots, html:not(.fp) .counter { display: none; }
+
+.scene { overflow: hidden; }
+.scene-bg { position: absolute; inset: 0; z-index: 0; }
+
+/* staggered appearance */
+[data-anim] {
+  opacity: 0;
+  transform: translateY(34px);
+  filter: blur(6px);
+  transition: opacity .5s ease, transform .5s ease, filter .5s ease;
+}
+.is-active [data-anim] {
+  opacity: 1; transform: none; filter: none;
+  transition: opacity .9s var(--ease), transform 1s var(--ease), filter .9s ease;
+  transition-delay: calc(.45s + var(--d, 0) * .12s);
+}
+
+/* ---------- 0. MAP ---------- */
+.scene-map { --accent: var(--aqua); background: var(--ink); }
+.map { position: absolute; inset: 0; z-index: 0; background: #0b1820; }
+.map-veil {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(4, 18, 28, .96) 0%, rgba(4, 18, 28, .82) 32%, rgba(4, 18, 28, .15) 62%, rgba(4, 18, 28, 0) 100%),
+    linear-gradient(0deg, rgba(4, 18, 28, .7) 0%, rgba(4, 18, 28, 0) 30%);
+}
+.leaflet-container { background: #0b1820; font-family: var(--f-body); }
+/* светлые тайлы OSM → тёмная «ночная» карта в цветах бренда */
+.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.92) saturate(.55); }
+.leaflet-control-attribution { background: rgba(4, 18, 28, .7) !important; color: var(--muted) !important; font-size: 10px; }
+.leaflet-control-attribution a { color: var(--paper) !important; }
+
+.pin { position: relative; }
+.pin-dot { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--aqua); border: 4px solid var(--ink); box-shadow: 0 0 0 2px var(--aqua), 0 0 30px var(--aqua); }
+.pin-pulse { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--aqua); animation: pulse 2.4s ease-out infinite; }
+.pin-pulse.p2 { animation-delay: 1.2s; }
+.pin-label { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); white-space: nowrap; padding: 6px 12px; border-radius: 8px; background: var(--ink); border: 1px solid var(--aqua); font-family: var(--f-display); font-size: 11px; letter-spacing: .2em; color: var(--paper); }
+@keyframes pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(6); opacity: 0; } }
+
+.hero {
+  position: relative; z-index: 3;
+  height: 100%; min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 110px var(--gutter) 90px;
+  max-width: 640px;
+  pointer-events: none;
+}
+.hero > * { pointer-events: auto; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 12px; transition: color .6s; }
+.eyebrow .num { font-family: var(--f-display); color: var(--paper); opacity: .45; }
+.hero-title { margin: 18px 0 30px; }
+.hero-title span {
+  display: block;
+  font-family: var(--f-display); font-weight: 900;
+  font-size: clamp(52px, 7.2vw, 112px); line-height: .95; letter-spacing: -.04em;
+  background: linear-gradient(100deg, var(--paper) 30%, var(--aqua) 70%, var(--paper));
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 8s ease-in-out infinite;
+}
+.hero-title small { display: block; margin-top: 14px; font-family: var(--f-body); font-weight: 500; font-size: clamp(17px, 1.6vw, 21px); color: var(--muted); line-height: 1.35; }
+@keyframes shimmer { 0%, 100% { background-position: 0% 0; } 50% { background-position: 100% 0; } }
+
+.contact-card {
+  max-width: 460px;
+  padding: 22px 24px 24px;
+  border-radius: 22px;
+  background: rgba(10, 34, 50, .62);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+.cc-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.cc-row:first-child { padding-top: 0; }
+.cc-label { font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.cc-val { font-weight: 600; text-align: right; }
+a.cc-val:hover { color: var(--aqua); }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px 20px; border-radius: 999px;
+  background: var(--accent); color: var(--ink);
+  font-weight: 700; font-size: 15px;
+  transition: transform .25s var(--ease), box-shadow .25s, background .6s;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px -10px var(--accent); }
+.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; }
+.btn-route { width: 100%; margin-top: 20px; padding: 16px 22px; font-size: 16px; justify-content: flex-start; }
+.btn-route .btn-sub { margin-left: auto; font-size: 12px; font-weight: 600; opacity: .6; }
+.btn-sm { padding: 9px 16px; font-size: 13px; flex-shrink: 0; }
+
+.scroll-hint { position: absolute; z-index: 3; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); pointer-events: none; }
+.mouse { width: 22px; height: 34px; border: 1.5px solid var(--muted); border-radius: 12px; position: relative; }
+.mouse i { position: absolute; left: 50%; top: 7px; width: 3px; height: 7px; margin-left: -1.5px; border-radius: 2px; background: var(--aqua); animation: wheel 1.8s ease-in-out infinite; }
+@keyframes wheel { 0% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(10px); opacity: 0; } 100% { opacity: 0; } }
+
+/* ---------- Split scenes ---------- */
+.split {
+  position: relative; z-index: 2;
+  height: 100%; min-height: 100svh;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  gap: clamp(28px, 4vw, 72px);
+  align-items: center;
+  padding: 96px calc(var(--gutter) + 36px) 70px var(--gutter);
+}
+.visual { position: relative; height: min(78vh, 760px); border-radius: 28px; overflow: hidden; background: var(--ink-2); }
+.visual img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); transition: transform 2.4s var(--ease); }
+.is-active .visual img { transform: scale(1); }
+.visual figcaption { position: absolute; left: 22px; bottom: 22px; z-index: 3; padding: 14px 18px; border-radius: 16px; background: rgba(4, 18, 28, .66); backdrop-filter: blur(12px); font-size: 14px; }
+.visual figcaption b { font-family: var(--f-display); font-size: 22px; color: var(--accent); }
+.visual figcaption span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.info { display: flex; flex-direction: column; gap: clamp(14px, 2.2vh, 24px); min-width: 0; }
+.section-title { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 3.5vw, 54px); line-height: 1.04; letter-spacing: -.025em; }
+.block-title { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+.trainers { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.trainer {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 12px 11px 11px; border-radius: 18px;
+  background: rgba(238, 246, 245, .05); border: 1px solid var(--line);
+  transition: background .3s, border-color .3s, transform .3s var(--ease);
+}
+.trainer:hover { background: rgba(238, 246, 245, .09); border-color: var(--accent); transform: translateX(4px); }
+.avatar { width: 46px; height: 46px; flex-shrink: 0; border-radius: 14px; display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 14px; color: var(--ink); background: var(--accent); }
+.t-body { flex: 1; min-width: 0; }
+.t-body b { display: block; font-size: 15px; }
+.t-body span { display: block; font-size: 13px; color: var(--muted); line-height: 1.35; }
+
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.feature { padding: 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(238, 246, 245, .04); }
+.feature h4 { font-family: var(--f-display); font-weight: 500; font-size: 17px; margin: 12px 0 6px; }
+.feature p { font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+.feature-free { background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 22%, transparent), rgba(238, 246, 245, .03)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.tag-in { background: var(--accent); color: var(--ink); }
+.tag-out { background: transparent; color: var(--rose); border: 1.5px dashed var(--rose); }
+.tag.sm { font-size: 10px; padding: 3px 9px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chips span { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); }
+
+/* ---------- 1. POOL theme ---------- */
+.scene-pool { --accent: var(--aqua); }
+.scene-pool .scene-bg {
+  background:
+    radial-gradient(70% 60% at 20% 30%, rgba(11, 107, 120, .55), transparent 70%),
+    radial-gradient(60% 50% at 90% 90%, rgba(94, 240, 214, .14), transparent 70%),
+    linear-gradient(180deg, #03141f, #052434);
+}
+.visual-pool::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(4, 30, 46, 0) 50%, rgba(4, 30, 46, .6)); }
+.caustics {
+  position: absolute; inset: -20%; z-index: 1; mix-blend-mode: soft-light; opacity: .7;
+  background:
+    radial-gradient(closest-side, rgba(255, 255, 255, .5), transparent) 0 0 / 180px 120px,
+    radial-gradient(closest-side, rgba(94, 240, 214, .5), transparent) 60px 40px / 220px 160px;
+  animation: caustics 14s linear infinite;
+}
+@keyframes caustics { to { background-position: 180px 120px, 280px 200px; } }
+.waves { position: absolute; left: 0; right: 0; bottom: -2px; z-index: 2; width: 200%; height: 70px; animation: drift 9s linear infinite; }
+.waves path:first-child { fill: rgba(94, 240, 214, .18); }
+.waves path:last-child { fill: rgba(3, 20, 31, .55); }
+@keyframes drift { to { transform: translateX(-50%); } }
+
+/* ---------- 2. GYM theme ---------- */
+.scene-gym { --accent: var(--ember); }
+.scene-gym .scene-bg {
+  background:
+    radial-gradient(60% 60% at 15% 70%, rgba(255, 122, 61, .22), transparent 70%),
+    radial-gradient(40% 40% at 95% 10%, rgba(255, 107, 139, .12), transparent 70%),
+    linear-gradient(180deg, #120a08, #1a0f0b);
+}
+.visual-gym img { filter: contrast(1.08) saturate(.9); }
+.visual-gym::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(200deg, rgba(255, 122, 61, .28), transparent 45%), linear-gradient(0deg, rgba(18, 10, 8, .7), transparent 45%); mix-blend-mode: normal; }
+.grain {
+  position: absolute; inset: 0; z-index: 2; opacity: .18; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.scene-gym .feature-groups { background: rgba(255, 122, 61, .05); }
+
+/* ---------- 3. EXTRAS theme ---------- */
+.scene-extras { --accent: var(--sand); }
+.scene-extras .scene-bg {
+  background:
+    radial-gradient(50% 50% at 85% 20%, rgba(242, 201, 138, .16), transparent 70%),
+    radial-gradient(50% 60% at 10% 90%, rgba(255, 107, 139, .1), transparent 70%),
+    linear-gradient(180deg, #14110d, #0f0d0b);
+}
+.extras-wrap {
+  position: relative; z-index: 2;
+  height: 100%; min-height: 100svh;
+  display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr);
+  gap: clamp(28px, 4vw, 72px); align-items: center;
+  padding: 96px calc(var(--gutter) + 36px) 70px var(--gutter);
+}
+.extras-head { display: flex; flex-direction: column; gap: 22px; }
+.notice { padding: 20px; border-radius: 20px; border: 1.5px dashed rgba(255, 107, 139, .55); background: rgba(255, 107, 139, .06); }
+.notice .tag-out { font-size: 13px; padding: 7px 14px; border-style: solid; background: var(--rose); color: var(--ink); }
+.notice p { margin-top: 12px; font-size: 14px; color: var(--muted); }
+.extras-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.extra {
+  position: relative; display: flex; flex-direction: column; gap: 8px;
+  padding: 22px 20px 20px; border-radius: 22px;
+  background: rgba(242, 201, 138, .04); border: 1px solid rgba(242, 201, 138, .16);
+  transition: background .3s, transform .4s var(--ease), border-color .3s;
+}
+.extra:hover { background: rgba(242, 201, 138, .09); border-color: var(--sand); transform: translateY(-4px); }
+.extra svg { width: 40px; height: 40px; fill: none; stroke: var(--sand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 4px; }
+.extra h4 { font-family: var(--f-display); font-weight: 500; font-size: 16px; }
+.extra p { font-size: 13px; color: var(--muted); line-height: 1.45; flex: 1; }
+.extra .tag { align-self: flex-start; }
+
+/* ---------- 4. CONTACTS ---------- */
+.scene-contacts { --accent: var(--aqua); }
+.scene-contacts .scene-bg {
+  background:
+    radial-gradient(60% 70% at 50% 120%, rgba(94, 240, 214, .25), transparent 70%),
+    linear-gradient(180deg, #04121c, #021018);
+}
+.scene-contacts .scene-bg::after {
+  content: "ALSENA"; position: absolute; left: 50%; bottom: -4vw; transform: translateX(-50%);
+  font-family: var(--f-display); font-weight: 900; font-size: 26vw; line-height: 1; letter-spacing: -.05em;
+  color: transparent; -webkit-text-stroke: 1px rgba(94, 240, 214, .12); white-space: nowrap; pointer-events: none;
+}
+.contacts-wrap {
+  position: relative; z-index: 2;
+  height: 100%; min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 100px calc(var(--gutter) + 36px) 40px var(--gutter);
+  max-width: 1400px;
+}
+.big-phone {
+  display: block; margin: 18px 0 clamp(28px, 5vh, 56px);
+  font-family: var(--f-display); font-weight: 900;
+  font-size: clamp(30px, 7.4vw, 124px); line-height: .95; letter-spacing: -.04em;
+  white-space: nowrap;
+  transition: color .3s;
+}
+.big-phone:hover { color: var(--aqua); }
+.contacts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.c-item { display: flex; flex-direction: column; gap: 8px; padding: 26px 24px 26px 0; }
+.c-item + .c-item { padding-left: 24px; border-left: 1px solid var(--line); }
+.c-item b { font-family: var(--f-display); font-weight: 500; font-size: clamp(16px, 1.45vw, 22px); line-height: 1.25; overflow-wrap: break-word; }
+.counter { transition: opacity .4s; }
+html.at-end .counter { opacity: 0; }
+.c-item b a:hover { color: var(--aqua); }
+.c-item .link { color: var(--aqua); font-weight: 700; font-size: 14px; }
+.muted { color: var(--muted); font-size: 14px; }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: clamp(24px, 6vh, 64px); padding-top: 22px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.socials { display: flex; gap: 22px; }
+.socials a:hover, .to-top:hover { color: var(--paper); }
+.to-top { color: var(--muted); font-weight: 600; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .duo { grid-template-columns: 1fr; }
+  .duo .feature p { display: none; }
+  .extras-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .extra p { display: none; }
+}
+@media (max-height: 760px) and (min-width: 900px) {
+  .visual { height: 72vh; }
+  .section-title { font-size: clamp(26px, 3vw, 40px); }
+  .trainer { padding: 8px 10px; }
+  .avatar { width: 40px; height: 40px; }
+  .feature { padding: 14px; }
+  .feature p { font-size: 12.5px; }
+}
+
+@media (max-width: 899px), (max-height: 599px) {
+  .topnav a:not(.topnav-cta) { display: none; }
+  .map { position: absolute; inset: 0; }
+  .map-veil { background: linear-gradient(0deg, rgba(4, 18, 28, .97) 30%, rgba(4, 18, 28, .4) 70%, rgba(4, 18, 28, .2)); }
+  .hero { justify-content: flex-end; padding-top: 50svh; padding-bottom: 100px; max-width: none; }
+  .scroll-hint { display: none; }
+  .split, .extras-wrap { grid-template-columns: 1fr; padding: 90px var(--gutter) 60px; }
+  .visual { height: 46svh; }
+  .duo { grid-template-columns: 1fr; }
+  .duo .feature p { display: block; }
+  .extras-grid { grid-template-columns: 1fr 1fr; }
+  .extra p { display: block; }
+  .contacts-wrap { padding: 90px var(--gutter) 30px; }
+  .contacts-grid { grid-template-columns: 1fr 1fr; }
+  .c-item, .c-item + .c-item { padding: 20px 12px 20px 0; border-left: 0; border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 560px) {
+  .trainer { flex-wrap: wrap; }
+  .trainer .btn-sm { width: 100%; }
+  .extras-grid, .contacts-grid { grid-template-columns: 1fr; }
+  .cc-row { flex-direction: column; gap: 2px; }
+  .cc-val { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============ ВЕРХНЯЯ ПАНЕЛЬ ============ -->
+<header class="topbar">
+  <a class="logo" href="#" data-go="0" aria-label="Alsena — на главную">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M4 26c4-4 8-4 12 0s8 4 12 0 8-4 8-4" /><path d="M4 33c4-4 8-4 12 0s8 4 12 0 8-4 8-4" /><circle cx="20" cy="12" r="6" /></svg>
+    <span>ALSENA</span>
+  </a>
+  <nav class="topnav">
+    <a href="#pool" data-go="1">Бассейн</a>
+    <a href="#gym" data-go="2">Зал</a>
+    <a href="#extras" data-go="3">Услуги</a>
+    <a href="#contacts" data-go="4" class="topnav-cta">Контакты</a>
+  </nav>
+</header>
+
+<ol class="dots" aria-label="Разделы">
+  <li><button data-go="0" aria-label="Карта"><span>Карта</span></button></li>
+  <li><button data-go="1" aria-label="Бассейн"><span>Бассейн</span></button></li>
+  <li><button data-go="2" aria-label="Тренажёрный зал"><span>Тренажёрный зал</span></button></li>
+  <li><button data-go="3" aria-label="Доп. услуги"><span>Доп. услуги</span></button></li>
+  <li><button data-go="4" aria-label="Контакты"><span>Контакты</span></button></li>
+</ol>
+
+<div class="counter" aria-hidden="true"><b id="counterNow">01</b><i></i><span>05</span></div>
+
+<main class="stage">
+
+  <!-- ============ 0. КАРТА ============ -->
+  <section class="scene scene-map is-active" id="home" data-theme="map">
+    <div id="map" class="map" aria-label="Карта расположения центра"></div>
+    <div class="map-veil"></div>
+
+    <div class="hero">
+      <p class="eyebrow" data-anim style="--d:0">Плавание · Фитнес · Восстановление</p>
+      <h1 class="hero-title" data-anim style="--d:1">
+        <span>Alsena</span>
+        <small>центр, где вода<br>и движение — одно целое</small>
+      </h1>
+
+      <div class="contact-card" data-anim style="--d:2">
+        <div class="cc-row">
+          <span class="cc-label">Адрес</span>
+          <span class="cc-val js-address">ул. Лазурная, 27, Алматы</span>
+        </div>
+        <div class="cc-row">
+          <span class="cc-label">Телефон</span>
+          <a class="cc-val js-phone" href="tel:+77273554120">+7 (727) 355-41-20</a>
+        </div>
+        <div class="cc-row">
+          <span class="cc-label">WhatsApp</span>
+          <a class="cc-val js-wa" href="#" target="_blank" rel="noopener">+7 (701) 555-18-42</a>
+        </div>
+        <div class="cc-row">
+          <span class="cc-label">Часы</span>
+          <span class="cc-val">Ежедневно 06:30 — 23:00</span>
+        </div>
+        <a class="btn btn-route js-route" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8 2 5 5.1 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.9-3-7-7-7Z"/><circle cx="12" cy="9" r="2.6"/></svg>
+          Построить маршрут
+          <span class="btn-sub">Google Карты</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="scroll-hint" data-anim style="--d:4">
+      <span class="mouse"><i></i></span>
+      <span>Крутите колесо — откроем центр</span>
+    </div>
+  </section>
+
+  <!-- ============ 1. БАССЕЙН ============ -->
+  <section class="scene scene-pool" id="pool" data-theme="pool">
+    <div class="scene-bg"></div>
+    <div class="split">
+      <figure class="visual visual-pool" data-anim style="--d:0">
+        <img src="https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1400&q=80" alt="Пловец в бассейне" loading="eager">
+        <div class="caustics"></div>
+        <svg class="waves" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 60 C 200 10 400 110 600 60 S 1000 10 1200 60 V120 H0Z"/>
+          <path d="M0 75 C 200 30 400 120 600 75 S 1000 30 1200 75 V120 H0Z"/>
+        </svg>
+        <figcaption>
+          <b>25 м</b> · 6 дорожек<span>Вода +28 °C · озонирование без хлорки</span>
+        </figcaption>
+      </figure>
+
+      <div class="info">
+        <p class="eyebrow" data-anim style="--d:1"><span class="num">01</span> Бассейн</p>
+        <h2 class="section-title" data-anim style="--d:2">Вода, в которой<br><em>хочется остаться</em></h2>
+
+        <div class="block" data-anim style="--d:3">
+          <h3 class="block-title">Тренеры — запись на персональные занятия</h3>
+          <ul class="trainers">
+            <li class="trainer">
+              <span class="avatar">АС</span>
+              <div class="t-body">
+                <b>Айгерим Сапарова</b>
+                <span>КМС · плавание с нуля для взрослых · 8 лет</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Айгерим Сапарова (бассейн)" href="#">Записаться</a>
+            </li>
+            <li class="trainer">
+              <span class="avatar">ДК</span>
+              <div class="t-body">
+                <b>Даниил Ковалёв</b>
+                <span>Техника кроля и баттерфляя · триатлон · 11 лет</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Даниил Ковалёв (бассейн)" href="#">Записаться</a>
+            </li>
+            <li class="trainer">
+              <span class="avatar">МЛ</span>
+              <div class="t-body">
+                <b>Марина Ли</b>
+                <span>Детское плавание 4–12 лет · аквааэробика · 6 лет</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Марина Ли (бассейн)" href="#">Записаться</a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="duo" data-anim style="--d:4">
+          <div class="feature feature-free">
+            <span class="tag tag-in">✓ Включено в абонемент</span>
+            <h4>Свободное плавание</h4>
+            <p>Приходите сами, когда удобно: отдельные дорожки для свободного плавания весь день.</p>
+          </div>
+          <div class="feature feature-sauna">
+            <span class="tag tag-in">✓ Включено в абонемент</span>
+            <h4>Сауны у бассейна</h4>
+            <p>Финская сауна, турецкий хаммам и купель с холодной водой — прямо из чаши бассейна.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. ТРЕНАЖЁРНЫЙ ЗАЛ ============ -->
+  <section class="scene scene-gym" id="gym" data-theme="gym">
+    <div class="scene-bg"></div>
+    <div class="split">
+      <figure class="visual visual-gym" data-anim style="--d:0">
+        <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1400&q=80" alt="Девушка тренируется в зале" loading="lazy">
+        <div class="grain"></div>
+        <figcaption>
+          <b>1 200 м²</b> · 2 этажа<span>Hammer Strength · Technogym · зона кроссфита</span>
+        </figcaption>
+      </figure>
+
+      <div class="info">
+        <p class="eyebrow" data-anim style="--d:1"><span class="num">02</span> Тренажёрный зал</p>
+        <h2 class="section-title" data-anim style="--d:2">Сила, которую<br><em>видно в зеркале</em></h2>
+
+        <div class="block" data-anim style="--d:3">
+          <h3 class="block-title">Тренеры — запись на персональные тренировки</h3>
+          <ul class="trainers">
+            <li class="trainer">
+              <span class="avatar">АЖ</span>
+              <div class="t-body">
+                <b>Арман Жаксылыков</b>
+                <span>Силовой тренинг · набор массы · МС по пауэрлифтингу</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Арман Жаксылыков (зал)" href="#">Записаться</a>
+            </li>
+            <li class="trainer">
+              <span class="avatar">ЕБ</span>
+              <div class="t-body">
+                <b>Екатерина Белова</b>
+                <span>Функциональный тренинг · снижение веса · 7 лет</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Екатерина Белова (зал)" href="#">Записаться</a>
+            </li>
+            <li class="trainer">
+              <span class="avatar">ТО</span>
+              <div class="t-body">
+                <b>Тимур Османов</b>
+                <span>Реабилитация · здоровая спина · ЛФК · 12 лет</span>
+              </div>
+              <a class="btn btn-sm js-book" data-trainer="Тимур Османов (зал)" href="#">Записаться</a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="duo" data-anim style="--d:4">
+          <div class="feature feature-free">
+            <span class="tag tag-in">✓ Включено в абонемент</span>
+            <h4>Свободное посещение зала</h4>
+            <p>Тренируйтесь самостоятельно в любое время работы центра. Вводный инструктаж — бесплатно.</p>
+          </div>
+          <div class="feature feature-groups">
+            <span class="tag tag-in">✓ Включено в абонемент</span>
+            <h4>Фитнес-кружки</h4>
+            <div class="chips">
+              <span>Йога</span><span>Пилатес</span><span>Стретчинг</span><span>Функционал</span><span>Зумба</span><span>Аквааэробика</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. ДОП. УСЛУГИ ============ -->
+  <section class="scene scene-extras" id="extras" data-theme="extras">
+    <div class="scene-bg"></div>
+    <div class="extras-wrap">
+      <div class="extras-head">
+        <p class="eyebrow" data-anim style="--d:0"><span class="num">03</span> Ещё в Alsena</p>
+        <h2 class="section-title" data-anim style="--d:1">После тренировки —<br><em>время для себя</em></h2>
+        <div class="notice" data-anim style="--d:2">
+          <span class="tag tag-out">Не входит в абонемент</span>
+          <p>Эти услуги оплачиваются отдельно. Владельцам абонемента — скидка 10%.</p>
+        </div>
+      </div>
+
+      <div class="extras-grid">
+        <article class="extra" data-anim style="--d:2">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 18h24v10a10 10 0 0 1-10 10h-4A10 10 0 0 1 10 28Z"/><path d="M34 21h3a5 5 0 0 1 0 10h-4"/><path d="M18 6c-2 3 2 5 0 8M25 6c-2 3 2 5 0 8"/></svg>
+          <h4>Кафе Alsena</h4>
+          <p>Смузи, боулы, протеиновые коктейли и свежая выпечка.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+        <article class="extra" data-anim style="--d:3">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30h36M8 30c0-6 6-10 16-10s16 4 16 10"/><circle cx="14" cy="16" r="4"/><path d="M12 38h24"/></svg>
+          <h4>Массаж</h4>
+          <p>Классический, спортивный, лимфодренажный, массаж спины.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+        <article class="extra" data-anim style="--d:4">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 42V22a7 7 0 0 1 14 0v20"/><path d="M20 22a4 4 0 0 1 8 0v4h-8Z"/><path d="M14 42h20"/></svg>
+          <h4>Маникюр и педикюр</h4>
+          <p>Аппаратный маникюр, покрытие, SPA-уход для рук и ног.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+        <article class="extra" data-anim style="--d:5">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6c6 8 12 13 12 21a12 12 0 0 1-24 0c0-8 6-13 12-21Z"/><path d="M19 30a5 5 0 0 0 5 5"/></svg>
+          <h4>SPA-ритуалы</h4>
+          <p>Обёртывания, скрабы, уход за лицом после сауны.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+        <article class="extra" data-anim style="--d:6">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="10" width="32" height="28" rx="6"/><circle cx="18" cy="20" r="1.5"/><circle cx="30" cy="24" r="1.5"/><circle cx="22" cy="30" r="1.5"/><circle cx="31" cy="15" r="1.5"/></svg>
+          <h4>Соляная пещера</h4>
+          <p>Галокамера: 40 минут морского воздуха для дыхания и сна.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+        <article class="extra" data-anim style="--d:7">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="16" r="7"/><path d="M12 40c0-7 5-12 12-12s12 5 12 12"/><path d="M21 15h0M27 15h0"/></svg>
+          <h4>Детская комната</h4>
+          <p>Пока вы тренируетесь — с ребёнком занимается аниматор.</p>
+          <span class="tag tag-out sm">отдельно</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. КОНТАКТЫ ============ -->
+  <section class="scene scene-contacts" id="contacts" data-theme="contacts">
+    <div class="scene-bg"></div>
+    <div class="contacts-wrap">
+      <p class="eyebrow" data-anim style="--d:0"><span class="num">04</span> Ждём вас</p>
+      <a class="big-phone js-phone" href="tel:+77273554120" data-anim style="--d:1">+7 (727) 355-41-20</a>
+
+      <div class="contacts-grid">
+        <div class="c-item" data-anim style="--d:2">
+          <span class="cc-label">Адрес</span>
+          <b class="js-address">ул. Лазурная, 27, Алматы</b>
+          <a class="link js-route" href="#" target="_blank" rel="noopener">Построить маршрут →</a>
+        </div>
+        <div class="c-item" data-anim style="--d:3">
+          <span class="cc-label">WhatsApp / Telegram</span>
+          <b><a class="js-wa" href="#" target="_blank" rel="noopener">+7 (701) 555-18-42</a></b>
+          <span class="muted">Ответим за 10 минут</span>
+        </div>
+        <div class="c-item" data-anim style="--d:4">
+          <span class="cc-label">Почта</span>
+          <b><a href="mailto:info@alsena.com">info@alsena.com</a></b>
+          <span class="muted">Для корпоративных клиентов</span>
+        </div>
+        <div class="c-item" data-anim style="--d:5">
+          <span class="cc-label">Режим работы</span>
+          <b>06:30 — 23:00</b>
+          <span class="muted">Без выходных · бассейн до 22:30</span>
+        </div>
+      </div>
+
+      <footer class="foot" data-anim style="--d:6">
+        <span>© <span id="year">2026</span> Alsena</span>
+        <div class="socials">
+          <a href="#" aria-label="Instagram">Instagram</a>
+          <a href="#" aria-label="Telegram">Telegram</a>
+          <a href="#" aria-label="2ГИС">2ГИС</a>
+        </div>
+        <button class="to-top" data-go="0">Наверх ↑</button>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =========================================================
+   ALSENA — настройки центра.
+   Поменяйте координаты и контакты здесь — они подставятся по всему сайту.
+   ========================================================= */
+const CENTER = {
+  lat: 43.2381,          // широта  (временная точка)
+  lng: 76.9452,          // долгота (временная точка)
+  zoom: 16,
+  address: 'ул. Лазурная, 27, Алматы',
+  phone: '+7 (727) 355-41-20',
+  whatsapp: '+7 (701) 555-18-42',
+};
+
+const digits = (s) => s.replace(/\D/g, '');
+const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${CENTER.lat},${CENTER.lng}`;
+const waUrl = (text) =>
+  `https://wa.me/${digits(CENTER.whatsapp)}` + (text ? `?text=${encodeURIComponent(text)}` : '');
+
+/* ---------- Подстановка контактов ---------- */
+document.querySelectorAll('.js-route').forEach((a) => (a.href = routeUrl));
+document.querySelectorAll('.js-address').forEach((el) => (el.textContent = CENTER.address));
+document.querySelectorAll('.js-phone').forEach((a) => {
+  a.href = `tel:+${digits(CENTER.phone)}`;
+  a.textContent = CENTER.phone;
+});
+document.querySelectorAll('.js-wa').forEach((a) => {
+  a.href = waUrl();
+  a.textContent = CENTER.whatsapp;
+});
+document.querySelectorAll('.js-book').forEach((a) => {
+  a.href = waUrl(`Здравствуйте! Хочу записаться к тренеру: ${a.dataset.trainer}`);
+  a.target = '_blank';
+  a.rel = 'noopener';
+});
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ---------- Карта ---------- */
+let map;
+function initMap() {
+  if (!window.L) return;
+  map = L.map('map', {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    attributionControl: true,
+  }).setView([CENTER.lat, CENTER.lng], CENTER.zoom);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const icon = L.divIcon({
+    className: 'pin',
+    html: '<span class="pin-pulse"></span><span class="pin-pulse p2"></span><span class="pin-dot"></span><span class="pin-label">ALSENA</span>',
+    iconSize: [22, 22],
+  });
+  L.marker([CENTER.lat, CENTER.lng], { icon, keyboard: false })
+    .addTo(map)
+    .on('click', () => window.open(routeUrl, '_blank', 'noopener'));
+
+  centerMarker();
+}
+// Сдвигаем карту так, чтобы точка была справа от панели с контактами
+function centerMarker() {
+  if (!map) return;
+  map.invalidateSize();
+  map.setView([CENTER.lat, CENTER.lng], CENTER.zoom, { animate: false });
+  if (innerWidth >= 900) map.panBy([-innerWidth * 0.2, 0], { animate: false });
+  else map.panBy([0, innerHeight * 0.22], { animate: false });
+}
+initMap();
+
+/* ---------- Пошаговая прокрутка ---------- */
+const root = document.documentElement;
+const scenes = [...document.querySelectorAll('.scene')];
+const dots = [...document.querySelectorAll('.dots button')];
+const navLinks = [...document.querySelectorAll('.topnav a')];
+const counterNow = document.getElementById('counterNow');
+const fpQuery = matchMedia('(min-width: 900px) and (min-height: 600px)');
+
+let index = 0;
+let locked = false;
+let gestureBusy = false;
+let gestureTimer;
+let io;
+
+function markCurrent(i) {
+  dots.forEach((d, n) => d.classList.toggle('is-current', n === i));
+  navLinks.forEach((a) => a.classList.toggle('is-current', +a.dataset.go === i));
+  counterNow.textContent = String(i + 1).padStart(2, '0');
+  root.classList.toggle('at-end', i === scenes.length - 1);
+  // цвет меню и точек подстраивается под текущий раздел
+  root.style.setProperty('--accent', getComputedStyle(scenes[i]).getPropertyValue('--accent').trim() || '#5ef0d6');
+}
+
+function go(next) {
+  next = Math.max(0, Math.min(scenes.length - 1, next));
+  if (!root.classList.contains('fp')) {
+    scenes[next].scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (next === index || locked) return;
+  locked = true;
+  gestureBusy = true;
+  scenes[index].classList.remove('is-active');
+  scenes[next].classList.add('is-active');
+  index = next;
+  markCurrent(index);
+  history.replaceState(null, '', index ? '#' + scenes[index].id : location.pathname);
+  setTimeout(() => (locked = false), 1100);
+}
+
+// Колесо мыши: один жест = один шаг (учитывает инерцию тачпада)
+addEventListener(
+  'wheel',
+  (e) => {
+    if (!root.classList.contains('fp')) return;
+    e.preventDefault();
+    clearTimeout(gestureTimer);
+    gestureTimer = setTimeout(() => (gestureBusy = false), 180);
+    if (locked || gestureBusy || Math.abs(e.deltaY) < 4) return;
+    go(index + (e.deltaY > 0 ? 1 : -1));
+  },
+  { passive: false }
+);
+
+addEventListener('keydown', (e) => {
+  if (!root.classList.contains('fp')) return;
+  const map = { ArrowDown: 1, PageDown: 1, ' ': 1, ArrowUp: -1, PageUp: -1 };
+  if (e.key in map) { e.preventDefault(); go(index + map[e.key]); }
+  if (e.key === 'Home') { e.preventDefault(); go(0); }
+  if (e.key === 'End') { e.preventDefault(); go(scenes.length - 1); }
+});
+
+let touchY = null;
+addEventListener('touchstart', (e) => (touchY = e.touches[0].clientY), { passive: true });
+addEventListener('touchend', (e) => {
+  if (!root.classList.contains('fp') || touchY === null) return;
+  const dy = touchY - e.changedTouches[0].clientY;
+  if (Math.abs(dy) > 50) go(index + Math.sign(dy));
+  touchY = null;
+});
+
+document.querySelectorAll('[data-go]').forEach((el) =>
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    go(+el.dataset.go);
+  })
+);
+
+/* ---------- Режимы: пошаговый (десктоп) / обычный скролл (телефон) ---------- */
+function applyMode() {
+  io?.disconnect();
+  if (fpQuery.matches) {
+    root.classList.add('fp');
+    scenes.forEach((s, n) => s.classList.toggle('is-active', n === index));
+    markCurrent(index);
+  } else {
+    root.classList.remove('fp');
+    io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((en) => {
+          if (en.isIntersecting) en.target.classList.add('is-active');
+        }),
+      { threshold: 0.15 }
+    );
+    scenes.forEach((s) => io.observe(s));
+  }
+  setTimeout(centerMarker, 50);
+}
+
+const startId = location.hash.slice(1);
+const startIdx = scenes.findIndex((s) => s.id === startId);
+if (startIdx > 0) index = startIdx;
+applyMode();
+fpQuery.addEventListener('change', applyMode);
+addEventListener('resize', () => {
+  clearTimeout(window.__rz);
+  window.__rz = setTimeout(centerMarker, 150);
+});
+
+</script>
+</body>
+</html>
