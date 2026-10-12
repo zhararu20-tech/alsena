@@ -200,10 +200,18 @@ a.cc-val:hover { color: var(--aqua); }
   align-items: center;
   padding: 96px calc(var(--gutter) + 36px) 70px var(--gutter);
 }
-.visual { position: relative; height: min(78vh, 760px); border-radius: 28px; overflow: hidden; background: var(--ink-2); }
+/* фото без рамки — растворяется в фоне раздела */
+.visual {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 64%; z-index: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, #000 45%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 45%, transparent 100%);
+}
+.visual[data-anim] { transform: none; filter: none; }
 .visual img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); transition: transform 2.4s var(--ease); }
 .is-active .visual img { transform: scale(1); }
-.visual figcaption { position: absolute; left: 22px; bottom: 22px; z-index: 3; padding: 14px 18px; border-radius: 16px; background: rgba(4, 18, 28, .66); backdrop-filter: blur(12px); font-size: 14px; }
+.split .info { position: relative; z-index: 2; grid-column: 2; }
+.visual figcaption { position: absolute; left: var(--gutter); bottom: 84px; z-index: 3; padding: 14px 18px; border-radius: 16px; background: rgba(4, 18, 28, .66); backdrop-filter: blur(12px); font-size: 14px; }
 .visual figcaption b { font-family: var(--f-display); font-size: 22px; color: var(--accent); }
 .visual figcaption span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 
@@ -246,7 +254,7 @@ a.cc-val:hover { color: var(--aqua); }
     radial-gradient(60% 50% at 90% 90%, rgba(94, 240, 214, .14), transparent 70%),
     linear-gradient(180deg, #03141f, #052434);
 }
-.visual-pool::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(4, 30, 46, 0) 50%, rgba(4, 30, 46, .6)); }
+.visual-pool::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(3, 20, 31, .55) 0%, rgba(3, 20, 31, 0) 22%, rgba(3, 20, 31, 0) 70%, rgba(5, 36, 52, .85) 100%); }
 .caustics {
   position: absolute; inset: -20%; z-index: 1; mix-blend-mode: soft-light; opacity: .7;
   background:
@@ -255,7 +263,7 @@ a.cc-val:hover { color: var(--aqua); }
   animation: caustics 14s linear infinite;
 }
 @keyframes caustics { to { background-position: 180px 120px, 280px 200px; } }
-.waves { position: absolute; left: 0; right: 0; bottom: -2px; z-index: 2; width: 200%; height: 70px; animation: drift 9s linear infinite; }
+.waves { display: none; }
 .waves path:first-child { fill: rgba(94, 240, 214, .18); }
 .waves path:last-child { fill: rgba(3, 20, 31, .55); }
 @keyframes drift { to { transform: translateX(-50%); } }
@@ -269,7 +277,7 @@ a.cc-val:hover { color: var(--aqua); }
     linear-gradient(180deg, #120a08, #1a0f0b);
 }
 .visual-gym img { filter: contrast(1.08) saturate(.9); }
-.visual-gym::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(200deg, rgba(255, 122, 61, .28), transparent 45%), linear-gradient(0deg, rgba(18, 10, 8, .7), transparent 45%); mix-blend-mode: normal; }
+.visual-gym::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(200deg, rgba(255, 122, 61, .22), transparent 45%), linear-gradient(0deg, rgba(26, 15, 11, .85), transparent 35%), linear-gradient(180deg, rgba(18, 10, 8, .55), transparent 22%); }
 .grain {
   position: absolute; inset: 0; z-index: 2; opacity: .18; pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -357,7 +365,6 @@ html.at-end .counter { opacity: 0; }
   .extra p { display: none; }
 }
 @media (max-height: 760px) and (min-width: 900px) {
-  .visual { height: 72vh; }
   .section-title { font-size: clamp(26px, 3vw, 40px); }
   .trainer { padding: 8px 10px; }
   .avatar { width: 40px; height: 40px; }
@@ -372,7 +379,14 @@ html.at-end .counter { opacity: 0; }
   .hero { justify-content: flex-end; padding-top: 50svh; padding-bottom: 100px; max-width: none; }
   .scroll-hint { display: none; }
   .split, .extras-wrap { grid-template-columns: 1fr; padding: 90px var(--gutter) 60px; }
-  .visual { height: 46svh; }
+  .split { padding-top: 42svh; }
+  .split .info { grid-column: auto; }
+  .visual {
+    right: 0; bottom: auto; width: 100%; height: 58svh;
+    -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  }
+  .visual figcaption { display: none; }
   .duo { grid-template-columns: 1fr; }
   .duo .feature p { display: block; }
   .extras-grid { grid-template-columns: 1fr 1fr; }
@@ -438,15 +452,15 @@ html.at-end .counter { opacity: 0; }
       <div class="contact-card" data-anim style="--d:2">
         <div class="cc-row">
           <span class="cc-label">Адрес</span>
-          <span class="cc-val js-address">ул. Лазурная, 27, Алматы</span>
+          <span class="cc-val js-address">пр. Ленина, 40, Балашиха</span>
         </div>
         <div class="cc-row">
           <span class="cc-label">Телефон</span>
-          <a class="cc-val js-phone" href="tel:+77273554120">+7 (727) 355-41-20</a>
+          <a class="cc-val js-phone" href="tel:+74955214040">+7 (495) 521-40-40</a>
         </div>
         <div class="cc-row">
           <span class="cc-label">WhatsApp</span>
-          <a class="cc-val js-wa" href="#" target="_blank" rel="noopener">+7 (701) 555-18-42</a>
+          <a class="cc-val js-wa" href="#" target="_blank" rel="noopener">+7 (916) 555-18-42</a>
         </div>
         <div class="cc-row">
           <span class="cc-label">Часы</span>
@@ -655,17 +669,17 @@ html.at-end .counter { opacity: 0; }
     <div class="scene-bg"></div>
     <div class="contacts-wrap">
       <p class="eyebrow" data-anim style="--d:0"><span class="num">04</span> Ждём вас</p>
-      <a class="big-phone js-phone" href="tel:+77273554120" data-anim style="--d:1">+7 (727) 355-41-20</a>
+      <a class="big-phone js-phone" href="tel:+74955214040" data-anim style="--d:1">+7 (495) 521-40-40</a>
 
       <div class="contacts-grid">
         <div class="c-item" data-anim style="--d:2">
           <span class="cc-label">Адрес</span>
-          <b class="js-address">ул. Лазурная, 27, Алматы</b>
+          <b class="js-address">пр. Ленина, 40, Балашиха</b>
           <a class="link js-route" href="#" target="_blank" rel="noopener">Построить маршрут →</a>
         </div>
         <div class="c-item" data-anim style="--d:3">
           <span class="cc-label">WhatsApp / Telegram</span>
-          <b><a class="js-wa" href="#" target="_blank" rel="noopener">+7 (701) 555-18-42</a></b>
+          <b><a class="js-wa" href="#" target="_blank" rel="noopener">+7 (916) 555-18-42</a></b>
           <span class="muted">Ответим за 10 минут</span>
         </div>
         <div class="c-item" data-anim style="--d:4">
@@ -701,12 +715,12 @@ html.at-end .counter { opacity: 0; }
    Поменяйте координаты и контакты здесь — они подставятся по всему сайту.
    ========================================================= */
 const CENTER = {
-  lat: 43.2381,          // широта  (временная точка)
-  lng: 76.9452,          // долгота (временная точка)
+  lat: 55.7993985,       // широта
+  lng: 37.973108,        // долгота
   zoom: 16,
-  address: 'ул. Лазурная, 27, Алматы',
-  phone: '+7 (727) 355-41-20',
-  whatsapp: '+7 (701) 555-18-42',
+  address: 'пр. Ленина, 40, Балашиха',
+  phone: '+7 (495) 521-40-40',
+  whatsapp: '+7 (916) 555-18-42',
 };
 
 const digits = (s) => s.replace(/\D/g, '');
